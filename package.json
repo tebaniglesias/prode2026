@@ -1,0 +1,21 @@
+{
+  "name": "prode-mundial-2026",
+  "version": "1.0.0",
+  "description": "Prode interno FIFA World Cup 2026",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:init": "node src/db-init.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "pg": "^8.11.5",
+    "dotenv": "^16.4.5",
+    "connect-pg-simple": "^9.0.1"
+  }
+}
