@@ -268,25 +268,23 @@ app.delete('/api/users/:id', requireAdmin, async (req, res) => {
 app.get('/api/knockout/matches', requireAuth, async (_req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, round, round_label, match_num, t1, t2, date, time, venue, g1, g2 FROM knockout_matches ORDER BY date, time, match_num'
+      'SELECT id, round, round_label, match_num, t1, t2, date, time, venue, g1, g2, winner FROM knockout_matches ORDER BY date, time, match_num'
     );
     res.json(rows);
   } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
-// ── PATCH /api/knockout/matches/:id  (admin: actualizar equipos y/o resultado) 
-app.patch('/api/knockout/matches/:id', requireAdmin, async (req, res) => {
-  const { t1, t2, g1, g2 } = req.body;
+// ── PATCH /api/knockout/matches/:id/teams  (admin: actualizar equipos de R32) ──
+app.patch('/api/knockout/matches/:id/teams', requireAdmin, async (req, res) => {
+  const { t1, t2 } = req.body;
   const { id } = req.params;
+  if (!t1 && !t2) return res.status(400).json({ error: 'Nada que actualizar' });
   try {
     const sets = [];
     const vals = [];
     let i = 1;
     if (t1 !== undefined) { sets.push(`t1=$${i++}`); vals.push(t1); }
     if (t2 !== undefined) { sets.push(`t2=$${i++}`); vals.push(t2); }
-    if (g1 !== undefined) { sets.push(`g1=$${i++}`); vals.push(g1); }
-    if (g2 !== undefined) { sets.push(`g2=$${i++}`); vals.push(g2); }
-    if (!sets.length) return res.status(400).json({ error: 'Nada que actualizar' });
     sets.push(`updated_at=NOW()`);
     vals.push(id);
     await pool.query(`UPDATE knockout_matches SET ${sets.join(',')} WHERE id=$${i}`, vals);
@@ -294,12 +292,108 @@ app.patch('/api/knockout/matches/:id', requireAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
-// ── DELETE /api/knockout/matches/:id/result  (admin: borrar resultado) ─────────
-app.delete('/api/knockout/matches/:id/result', requireAdmin, async (req, res) => {
+// ── POST /api/knockout/matches/:id/result  (admin: cargar resultado + ganador y propagar)
+app.post('/api/knockout/matches/:id/result', requireAdmin, async (req, res) => {
+  const { g1, g2, winner } = req.body;
+  const { id } = req.params;
+
+  if (typeof g1 !== 'number' || typeof g2 !== 'number' || !winner) {
+    return res.status(400).json({ error: 'Faltan datos: g1, g2 y winner son requeridos' });
+  }
+
+  const client = await pool.connect();
   try {
-    await pool.query('UPDATE knockout_matches SET g1=NULL, g2=NULL, updated_at=NOW() WHERE id=$1', [req.params.id]);
+    await client.query('BEGIN');
+
+    // 1. Guardar resultado y ganador en el partido actual
+    await client.query(
+      'UPDATE knockout_matches SET g1=$1, g2=$2, winner=$3, updated_at=NOW() WHERE id=$4',
+      [g1, g2, winner, id]
+    );
+
+    // 2. Buscar si este partido alimenta a otro (next_match_id + next_slot)
+    const { rows } = await client.query(
+      'SELECT next_match_id, next_slot FROM knockout_matches WHERE id=$1',
+      [id]
+    );
+    const { next_match_id, next_slot } = rows[0] || {};
+
+    if (next_match_id && next_slot) {
+      // 3. Propagar el ganador al slot correspondiente del siguiente partido
+      const field = next_slot === 1 ? 't1' : 't2';
+      await client.query(
+        `UPDATE knockout_matches SET ${field}=$1, updated_at=NOW() WHERE id=$2`,
+        [winner, next_match_id]
+      );
+    }
+
+    // 4. Caso especial: perdedor de SF va al tercer puesto
+    if (id === 'SF_1' || id === 'SF_2') {
+      const { rows: sfRows } = await client.query(
+        'SELECT t1, t2 FROM knockout_matches WHERE id=$1', [id]
+      );
+      const loser = winner === sfRows[0].t1 ? sfRows[0].t2 : sfRows[0].t1;
+      const tpSlot = id === 'SF_1' ? 't1' : 't2';
+      await client.query(
+        `UPDATE knockout_matches SET ${tpSlot}=$1, updated_at=NOW() WHERE id='TP_1'`,
+        [loser]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ ok: true, propagated: !!(next_match_id) });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error cargando resultado knockout:', err.message);
+    res.status(500).json({ error: 'Error interno' });
+  } finally {
+    client.release();
+  }
+});
+
+// ── DELETE /api/knockout/matches/:id/result  (admin: borrar resultado y limpiar propagación)
+app.delete('/api/knockout/matches/:id/result', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Obtener datos del partido antes de borrar
+    const { rows } = await client.query(
+      'SELECT next_match_id, next_slot, winner FROM knockout_matches WHERE id=$1', [req.params.id]
+    );
+    const { next_match_id, next_slot, winner } = rows[0] || {};
+
+    // Borrar resultado y ganador del partido
+    await client.query(
+      'UPDATE knockout_matches SET g1=NULL, g2=NULL, winner=NULL, updated_at=NOW() WHERE id=$1',
+      [req.params.id]
+    );
+
+    // Si había propagado un ganador, limpiarlo del siguiente partido
+    if (next_match_id && next_slot && winner) {
+      const field = next_slot === 1 ? 't1' : 't2';
+      await client.query(
+        `UPDATE knockout_matches SET ${field}='Por definir', updated_at=NOW() WHERE id=$1`,
+        [next_match_id]
+      );
+    }
+
+    // Limpiar tercer puesto si era una SF
+    if (req.params.id === 'SF_1') {
+      await client.query(`UPDATE knockout_matches SET t1='Por definir', updated_at=NOW() WHERE id='TP_1'`);
+    }
+    if (req.params.id === 'SF_2') {
+      await client.query(`UPDATE knockout_matches SET t2='Por definir', updated_at=NOW() WHERE id='TP_1'`);
+    }
+
+    await client.query('COMMIT');
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Error interno' });
+  } finally {
+    client.release();
+  }
 });
 
 // ── GET /api/knockout/predictions ─────────────────────────────────────────────
