@@ -159,10 +159,20 @@ body::before {
   padding: 1rem 1.2rem;
   margin-bottom: 0.6rem;
   display: grid;
-  /* 5 columnas: espacio izquierdo | equipo 1 | inputs | equipo 2 | botón derecho */
-  grid-template-columns: 36px 1fr auto 1fr 36px; 
+  grid-template-columns: 36px 1fr auto 1fr 36px;
   gap: 0.8rem; align-items: center;
   transition: border-color 0.2s, background 0.2s;
+}
+@media (max-width: 480px) {
+  .match-card {
+    grid-template-columns: 1fr auto 1fr;
+    padding: 0.8rem 1rem;
+  }
+  .match-card > div:first-child,
+  .match-card > div:last-child { display: none; }
+  .match-meta { grid-column: 1 / -1; font-size: 0.68rem; }
+  .team-name { font-size: 0.82rem; white-space: normal; word-break: break-word; }
+  .score-input { width: 40px; height: 40px; font-size: 1rem; }
 }
 .match-card:hover { background: rgba(255,255,255,0.07); border-color: rgba(201,149,42,0.3); }
 .match-card.locked { opacity: 0.6; }
@@ -229,6 +239,9 @@ body::before {
 }
 
 .team-name { font-size: 0.95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 480px) {
+  .team-name { font-size: 0.82rem; white-space: normal; overflow: visible; text-overflow: unset; line-height: 1.2; }
+}
 .team-left  { text-align: right; }
 .team-right { text-align: left; }
 
@@ -310,6 +323,15 @@ body::before {
   grid-template-columns: 36px 1fr auto 1fr 36px;
   gap: 0.8rem; align-items: center;
   transition: border-color 0.2s, background 0.2s;
+}
+@media (max-width: 480px) {
+  .knockout-card {
+    grid-template-columns: 1fr auto 1fr;
+    padding: 0.8rem 1rem;
+  }
+  .knockout-card > div:first-child,
+  .knockout-card > div:last-child { display: none; }
+  .knockout-meta { grid-column: 1 / -1; font-size: 0.68rem; }
 }
 .knockout-card:hover { background: rgba(255,255,255,0.07); border-color: rgba(201,149,42,0.3); }
 .knockout-card.locked { opacity: 0.6; }
@@ -794,13 +816,16 @@ async function doLogin() {
   document.getElementById('header-name').textContent = data.displayName;
   updateShareBtnVisuals();
 
-  // Admin sees only Admin tab + Scoreboard; players see Predictions + Scoreboard
+  // Admin: solo ve Admin + Tabla General (sin Predicciones ni Eliminatorias)
+  // Jugadores: ven Predicciones + Eliminatorias + Tabla General (sin Admin)
   if (data.isAdmin) {
     document.getElementById('tab-btn-predictions').classList.add('hidden');
+    document.getElementById('tab-btn-knockout').classList.add('hidden');
     document.getElementById('tab-btn-admin').classList.remove('hidden');
     showTab('admin');
   } else {
     document.getElementById('tab-btn-predictions').classList.remove('hidden');
+    document.getElementById('tab-btn-knockout').classList.remove('hidden');
     document.getElementById('tab-btn-admin').classList.add('hidden');
     showTab('predictions');
   }
