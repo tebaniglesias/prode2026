@@ -280,7 +280,8 @@ body::before {
 .pts-0 { background: rgba(192,57,43,0.3); color: #ff7675; }
 
 /* ── SCOREBOARD ─────────────────────────────────────────────────────────── */
-.scoreboard-table { width: 100%; border-collapse: collapse; }
+.scoreboard-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.scoreboard-table { width: 100%; border-collapse: collapse; min-width: 380px; }
 .scoreboard-table th {
   text-align: left; padding: 0.7rem 1rem;
   font-size: 0.72rem; letter-spacing: 1.5px; text-transform: uppercase;
@@ -328,18 +329,13 @@ body::before {
   padding: 1rem 1.2rem;
   margin-bottom: 0.6rem;
   display: grid;
-  grid-template-columns: 36px 1fr auto 1fr 36px;
-  gap: 0.8rem; align-items: center;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.6rem; align-items: center;
   transition: border-color 0.2s, background 0.2s;
 }
 @media (max-width: 540px) {
-  .knockout-card {
-    grid-template-columns: 1fr auto 1fr;
-    padding: 0.75rem 0.9rem;
-    gap: 0.5rem;
-  }
-  .knockout-meta { grid-column: 1 / -1; font-size: 0.67rem; gap: 0.4rem; }
-  .score-input { width: 38px; height: 38px; font-size: 0.95rem; }
+  .knockout-card { padding: 0.75rem 0.9rem; gap: 0.4rem; }
+  .knockout-meta { font-size: 0.67rem; gap: 0.35rem; }
 }
 .knockout-card:hover { background: rgba(255,255,255,0.07); border-color: rgba(201,149,42,0.3); }
 .knockout-card.locked { opacity: 0.6; }
@@ -584,7 +580,7 @@ body::before {
       <div id="tab-scoreboard" class="hidden">
         <h2 class="section-title">TABLA GENERAL</h2>
         <p class="section-sub">Puntos: 3 por resultado exacto · 2 por ganador/empate · 1 por participar</p>
-        <div id="scoreboard-content"></div>
+        <div class="scoreboard-wrap"><div id="scoreboard-content"></div></div>
       </div>
 
       <!-- ADMIN -->
@@ -944,7 +940,7 @@ function renderPredictions() {
           ${statusBadge}
           ${pts !== null ? `<span class="pts-badge pts-${pts}" style="margin-left:auto" title="${ptLabel(pts)}">${pts}pt</span>` : ''}
         </div>
-        <div></div> <div class="team-name team-left">${m.t1}</div>
+        <div class="team-name team-left">${m.t1}</div>
         <div class="score-inputs">
           <input class="score-input" type="number" min="0" max="99" id="g1-${m.id}"
             value="${hasPred ? pred.g1 : ''}" ${locked ? 'disabled' : ''}
@@ -955,7 +951,6 @@ function renderPredictions() {
             onchange="autoSave('${m.id}')">
         </div>
         <div class="team-name team-right">${m.t2}</div>
-
       </div>`;
     }
     html += '</div>';
@@ -1268,7 +1263,6 @@ async function renderKnockout() {
           ${statusBadge}
           ${pts !== null ? `<span class="pts-badge pts-${pts}" style="margin-left:auto" title="${ptLabel(pts)}">${pts}pt</span>` : ''}
         </div>
-        <div></div>
         <div class="team-name team-left">${m.t1}</div>
         <div class="score-inputs">
           <input class="score-input" type="number" min="0" max="99" id="kg1-${m.id}"
@@ -1280,7 +1274,6 @@ async function renderKnockout() {
             onchange="autoSaveKnockout('${m.id}')">
         </div>
         <div class="team-name team-right">${m.t2}</div>
-        <div></div>
       </div>`;
     }
     html += '</div>';
