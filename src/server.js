@@ -264,6 +264,137 @@ app.delete('/api/users/:id', requireAdmin, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
+// ── GET /api/knockout/matches ─────────────────────────────────────────────────
+app.get('/api/knockout/matches', requireAuth, async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, round, round_label, match_num, t1, t2, date, time, venue, g1, g2 FROM knockout_matches ORDER BY date, time, match_num'
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
+});
+
+// ── PATCH /api/knockout/matches/:id  (admin: actualizar equipos y/o resultado) 
+app.patch('/api/knockout/matches/:id', requireAdmin, async (req, res) => {
+  const { t1, t2, g1, g2 } = req.body;
+  const { id } = req.params;
+  try {
+    const sets = [];
+    const vals = [];
+    let i = 1;
+    if (t1 !== undefined) { sets.push(`t1=$${i++}`); vals.push(t1); }
+    if (t2 !== undefined) { sets.push(`t2=$${i++}`); vals.push(t2); }
+    if (g1 !== undefined) { sets.push(`g1=$${i++}`); vals.push(g1); }
+    if (g2 !== undefined) { sets.push(`g2=$${i++}`); vals.push(g2); }
+    if (!sets.length) return res.status(400).json({ error: 'Nada que actualizar' });
+    sets.push(`updated_at=NOW()`);
+    vals.push(id);
+    await pool.query(`UPDATE knockout_matches SET ${sets.join(',')} WHERE id=$${i}`, vals);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
+});
+
+// ── DELETE /api/knockout/matches/:id/result  (admin: borrar resultado) ─────────
+app.delete('/api/knockout/matches/:id/result', requireAdmin, async (req, res) => {
+  try {
+    await pool.query('UPDATE knockout_matches SET g1=NULL, g2=NULL, updated_at=NOW() WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
+});
+
+// ── GET /api/knockout/predictions ─────────────────────────────────────────────
+app.get('/api/knockout/predictions', requireAuth, async (req, res) => {
+  try {
+    const { rows: reqRows } = await pool.query('SELECT is_admin FROM users WHERE username=$1', [req.username]);
+    const isAdmin = reqRows[0]?.is_admin;
+    const targetUser = (isAdmin && req.query.username) ? req.query.username : req.username;
+
+    if (!isAdmin && targetUser !== req.username) {
+      const { rows } = await pool.query('SELECT share_predictions FROM users WHERE username=$1', [targetUser]);
+      if (!rows[0]?.share_predictions) {
+        return res.status(403).json({ error: 'Este usuario mantiene sus predicciones en privado 🙈' });
+      }
+    }
+
+    const { rows } = await pool.query(
+      'SELECT match_id, g1, g2 FROM knockout_predictions WHERE username=$1', [targetUser]
+    );
+    const preds = {};
+    for (const r of rows) preds[r.match_id] = { g1: r.g1, g2: r.g2 };
+    res.json(preds);
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
+});
+
+// ── POST /api/knockout/predictions  (jugadores only) ─────────────────────────
+app.post('/api/knockout/predictions', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT is_admin FROM users WHERE username=$1', [req.username]);
+    if (rows[0]?.is_admin) return res.status(403).json({ error: 'El admin no puede cargar predicciones' });
+  } catch (err) { return res.status(500).json({ error: 'Error interno' }); }
+
+  const { matchId, g1, g2 } = req.body;
+  if (!matchId || typeof g1 !== 'number' || typeof g2 !== 'number' || g1 < 0 || g2 < 0) {
+    return res.status(400).json({ error: 'Valores inválidos' });
+  }
+
+  try {
+    const { rows } = await pool.query('SELECT date, time, t1, t2 FROM knockout_matches WHERE id=$1', [matchId]);
+    const match = rows[0];
+    if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
+    if (match.t1 === 'Por definir' || match.t2 === 'Por definir') {
+      return res.status(403).json({ error: 'Esperá a que se confirmen los equipos' });
+    }
+    if (match.date && match.time) {
+      const lockTime = new Date(`${match.date}T${match.time}:00`).getTime() - 3600000;
+      if (Date.now() > lockTime) {
+        return res.status(403).json({ error: 'Las predicciones cierran 1 hora antes del partido' });
+      }
+    }
+    await pool.query(
+      'INSERT INTO knockout_predictions (username, match_id, g1, g2, saved_at) VALUES ($1,$2,$3,$4,NOW()) ON CONFLICT (username, match_id) DO UPDATE SET g1=$3,g2=$4,saved_at=NOW()',
+      [req.username, matchId, g1, g2]
+    );
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
+});
+
+// ── GET /api/knockout/scoreboard ──────────────────────────────────────────────
+app.get('/api/knockout/scoreboard', requireAuth, async (_req, res) => {
+  try {
+    const [{ rows: users }, { rows: matches }, { rows: preds }] = await Promise.all([
+      pool.query('SELECT username, display_name FROM users WHERE is_admin=FALSE'),
+      pool.query('SELECT id, g1, g2 FROM knockout_matches WHERE g1 IS NOT NULL AND g2 IS NOT NULL'),
+      pool.query('SELECT username, match_id, g1, g2 FROM knockout_predictions'),
+    ]);
+
+    const resultsMap = {};
+    for (const m of matches) resultsMap[m.id] = { g1: m.g1, g2: m.g2 };
+
+    const predsMap = {};
+    for (const p of preds) {
+      if (!predsMap[p.username]) predsMap[p.username] = {};
+      predsMap[p.username][p.match_id] = { g1: p.g1, g2: p.g2 };
+    }
+
+    const board = users.map(u => {
+      const userPreds = predsMap[u.username] || {};
+      let total = 0;
+      const breakdown = {};
+      for (const [matchId, real] of Object.entries(resultsMap)) {
+        const pred = userPreds[matchId];
+        if (!pred) continue;
+        const pts = calcPoints(pred, real);
+        total += pts;
+        breakdown[matchId] = { points: pts, pred, real };
+      }
+      return { userId: u.username, displayName: u.display_name, total, breakdown };
+    });
+
+    board.sort((a, b) => b.total - a.total);
+    res.json(board);
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
+});
+
 // ── Fallback SPA ──────────────────────────────────────────────────────────────
 app.get('*', (_req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 
