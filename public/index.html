@@ -34,7 +34,6 @@
 
 html, body { height: 100%; background: var(--dark); color: var(--cream); font-family: var(--font-body); }
 
-/* ── Background texture ─────────────────────────────────────────────────── */
 body::before {
   content: '';
   position: fixed; inset: 0; z-index: 0;
@@ -64,9 +63,7 @@ body::before {
   box-shadow: var(--shadow);
 }
 
-.login-logo {
-  text-align: center; margin-bottom: 2rem;
-}
+.login-logo { text-align: center; margin-bottom: 2rem; }
 .login-logo .ball { font-size: 3.5rem; display: block; margin-bottom: 0.5rem; }
 .login-logo h1 {
   font-family: var(--font-display);
@@ -103,13 +100,14 @@ body::before {
 .btn-danger:hover { background: #e74c3c; }
 .btn-success { background: var(--green); color: white; }
 .btn-success:hover { background: #27ae60; }
+.btn-amber { background: var(--amber); color: white; }
+.btn-amber:hover { filter: brightness(1.1); }
 
 .login-error { color: #ff7675; font-size: 0.85rem; margin-top: 0.8rem; text-align: center; }
 
 /* ── MAIN APP ───────────────────────────────────────────────────────────── */
 #main-app { display: none; }
 
-/* Header */
 .header {
   background: rgba(0,25,58,0.85);
   backdrop-filter: blur(20px);
@@ -119,15 +117,11 @@ body::before {
   position: sticky; top: 0; z-index: 100;
   height: 60px;
 }
-.header-brand {
-  font-family: var(--font-display);
-  font-size: 1.6rem; letter-spacing: 2px; color: var(--gold-lt);
-}
+.header-brand { font-family: var(--font-display); font-size: 1.6rem; letter-spacing: 2px; color: var(--gold-lt); }
 .header-user { display: flex; align-items: center; gap: 1rem; }
 .header-user span { font-size: 0.85rem; color: var(--gray); }
 .header-user strong { color: var(--cream); }
 
-/* Nav tabs */
 .nav-tabs {
   display: flex; gap: 0; overflow-x: auto;
   background: rgba(0,25,58,0.6);
@@ -143,10 +137,9 @@ body::before {
 .nav-tab:hover { color: var(--cream); }
 .nav-tab.active { color: var(--gold-lt); border-bottom-color: var(--gold); }
 
-/* Content */
 .content { padding: 2rem; max-width: 1100px; margin: 0 auto; }
 
-/* ── SECTION: PREDICCIONES ──────────────────────────────────────────────── */
+/* ── PREDICCIONES ───────────────────────────────────────────────────────── */
 .group-section { margin-bottom: 2.5rem; }
 .group-header {
   font-family: var(--font-display);
@@ -155,7 +148,8 @@ body::before {
   display: flex; align-items: center; gap: 0.8rem;
 }
 .group-header::after {
-  content: ''; flex: 1; height: 1px; background: linear-gradient(to right, rgba(201,149,42,0.4), transparent);
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(to right, rgba(201,149,42,0.4), transparent);
 }
 
 .match-card {
@@ -165,19 +159,21 @@ body::before {
   padding: 1rem 1.2rem;
   margin-bottom: 0.6rem;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* 5 columnas: espacio izquierdo | equipo 1 | inputs | equipo 2 | botón derecho */
+  grid-template-columns: 36px 1fr auto 1fr 36px; 
   gap: 0.8rem; align-items: center;
   transition: border-color 0.2s, background 0.2s;
 }
 .match-card:hover { background: rgba(255,255,255,0.07); border-color: rgba(201,149,42,0.3); }
 .match-card.locked { opacity: 0.6; }
-.match-card.locked .match-score-input { pointer-events: none; }
+.match-card.locked .score-input { pointer-events: none; }
 .match-card.saved { border-color: rgba(26,127,75,0.5); }
 
 .match-meta {
   grid-column: 1 / -1;
   display: flex; align-items: center; gap: 0.8rem;
   font-size: 0.72rem; color: var(--gray); letter-spacing: 0.5px;
+  flex-wrap: wrap;
 }
 .match-meta .badge {
   padding: 0.15rem 0.5rem; border-radius: 4px;
@@ -186,10 +182,53 @@ body::before {
 .match-meta .badge.started { background: rgba(192,57,43,0.3); color: #ff7675; }
 .match-meta .badge.played  { background: rgba(26,127,75,0.3); color: #55efc4; }
 
-.team-name {
-  font-size: 0.95rem; font-weight: 600; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis;
+/* Colores para estado de predicciones */
+.match-card.saved { 
+  border-color: rgba(26,127,75,0.6); 
+  background: rgba(26,127,75,0.05); /* Fondo verdoso sutil */
 }
+.match-card.unsaved { 
+  border-color: rgba(192,57,43,0.6); 
+  background: rgba(192,57,43,0.05); /* Fondo rojizo sutil */
+}
+
+/* Barra de filtros */
+.filters-bar {
+  display: flex; gap: 1rem; align-items: center;
+  margin-bottom: 1.5rem; padding: 1rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+}
+.filters-bar label { 
+  font-size: 0.85rem; color: var(--gray); 
+  text-transform: uppercase; letter-spacing: 1px; 
+}
+.filters-bar select {
+  background: rgba(0,25,58,0.8); color: var(--cream);
+  border: 1px solid rgba(255,255,255,0.2); padding: 0.5rem 1rem;
+  border-radius: 6px; font-family: var(--font-body); outline: none;
+  cursor: pointer;
+}
+.filters-bar select:focus { border-color: var(--gold); }
+
+.btn-save-inline {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(26,127,75,0.2);
+  color: #55efc4;
+  border: 1px solid rgba(26,127,75,0.5);
+  cursor: pointer; transition: all 0.18s;
+  font-size: 1.1rem; outline: none; padding: 0;
+}
+.btn-save-inline:hover {
+  background: var(--green); color: white; transform: scale(1.05);
+}
+.btn-save-inline:active {
+  transform: scale(0.95);
+}
+
+.team-name { font-size: 0.95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .team-left  { text-align: right; }
 .team-right { text-align: left; }
 
@@ -208,7 +247,6 @@ body::before {
 
 .match-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 0.5rem; }
 
-/* Points badge */
 .pts-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 28px; height: 28px; border-radius: 50%;
@@ -221,9 +259,7 @@ body::before {
 .pts-0 { background: rgba(192,57,43,0.3); color: #ff7675; }
 
 /* ── SCOREBOARD ─────────────────────────────────────────────────────────── */
-.scoreboard-table {
-  width: 100%; border-collapse: collapse;
-}
+.scoreboard-table { width: 100%; border-collapse: collapse; }
 .scoreboard-table th {
   text-align: left; padding: 0.7rem 1rem;
   font-size: 0.72rem; letter-spacing: 1.5px; text-transform: uppercase;
@@ -246,18 +282,10 @@ body::before {
 .rank-3 { background: #cd7f32; color: white; }
 .rank-n { background: rgba(255,255,255,0.08); color: var(--gray); }
 
-.score-bar-wrap { display: flex; align-items: center; gap: 0.8rem; min-width: 200px; }
+.score-bar-wrap { display: flex; align-items: center; gap: 0.8rem; min-width: 160px; }
 .score-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
 .score-bar-fill { height: 100%; background: linear-gradient(to right, var(--mid), var(--gold)); border-radius: 3px; transition: width 0.6s ease; }
 .score-pts { font-family: var(--font-mono); font-size: 0.95rem; font-weight: 500; color: var(--gold-lt); min-width: 40px; text-align: right; }
-
-.breakdown-row td { background: rgba(0,53,128,0.15) !important; }
-.breakdown-inner { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.3rem 0; }
-.breakdown-chip {
-  display: flex; align-items: center; gap: 0.3rem;
-  background: rgba(255,255,255,0.05); border-radius: 6px;
-  padding: 0.2rem 0.5rem; font-size: 0.72rem; font-family: var(--font-mono);
-}
 
 /* ── ADMIN ──────────────────────────────────────────────────────────────── */
 .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
@@ -275,7 +303,8 @@ body::before {
 
 .user-row {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+  gap: 0.5rem;
 }
 .user-row:last-child { border: none; }
 .user-info strong { display: block; font-size: 0.9rem; }
@@ -284,6 +313,7 @@ body::before {
   color: var(--gray); background: rgba(255,255,255,0.06);
   padding: 0.1rem 0.4rem; border-radius: 4px; margin-top: 0.2rem; display: inline-block;
 }
+.user-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
 
 .inline-form { display: flex; flex-direction: column; gap: 0.8rem; }
 .inline-form input {
@@ -294,9 +324,11 @@ body::before {
 }
 .inline-form input:focus { border-color: var(--gold); }
 
-/* Result inputs (admin) */
+/* Result inputs */
 .result-match {
-  display: grid; grid-template-columns: 1fr auto 1fr auto;
+  display: grid; 
+  /* Agregamos una columna de 85px para fecha/hora al principio */
+  grid-template-columns: 85px 1fr auto 1fr 35px;
   gap: 0.6rem; align-items: center;
   padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.06);
 }
@@ -310,6 +342,30 @@ body::before {
 }
 .result-input:focus { border-color: var(--gold); }
 .saved-badge { font-size: 0.7rem; color: #55efc4; }
+.result-match.result-locked { opacity: 0.5; }
+.result-match.result-locked .result-input { pointer-events: none; cursor: not-allowed; }
+.result-match .result-label-played {
+  font-size: 0.68rem; color: #55efc4; font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+/* Modal para cambiar contraseña */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.modal {
+  background: #0d1829;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px; padding: 2rem;
+  width: 100%; max-width: 380px;
+  box-shadow: var(--shadow);
+}
+.modal h4 { font-family: var(--font-display); font-size: 1.3rem; letter-spacing: 2px; color: var(--gold); margin-bottom: 1.2rem; }
+.modal-actions { display: flex; gap: 0.6rem; margin-top: 1rem; }
+.modal-actions .btn { flex: 1; }
 
 /* ── Toasts ─────────────────────────────────────────────────────────────── */
 #toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 999; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -323,25 +379,44 @@ body::before {
 .toast.info    { background: var(--blue);  color: white; }
 @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-/* All-predictions table */
-.all-pred-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; overflow-x: auto; display: block; }
-.all-pred-table th, .all-pred-table td { padding: 0.4rem 0.6rem; border: 1px solid rgba(255,255,255,0.07); white-space: nowrap; }
-.all-pred-table th { background: rgba(0,53,128,0.5); color: var(--gold-lt); font-family: var(--font-mono); }
-.all-pred-table td.match-label { color: var(--gray); font-family: var(--font-mono); font-size: 0.7rem; }
-.pred-cell { text-align: center; font-family: var(--font-mono); }
-.pred-cell.pts3 { background: rgba(26,127,75,0.3); }
-.pred-cell.pts2 { background: rgba(214,137,16,0.3); }
-.pred-cell.pts1 { background: rgba(255,255,255,0.05); color: var(--gray); }
-.pred-cell.nopred { color: rgba(255,255,255,0.2); }
-
 /* Misc */
-.section-title {
-  font-family: var(--font-display); font-size: 2rem; letter-spacing: 3px;
-  color: var(--cream); margin-bottom: 0.3rem;
-}
+.section-title { font-family: var(--font-display); font-size: 2rem; letter-spacing: 3px; color: var(--cream); margin-bottom: 0.3rem; }
 .section-sub { color: var(--gray); font-size: 0.85rem; margin-bottom: 2rem; }
 .empty { text-align: center; padding: 3rem; color: var(--gray); }
 .hidden { display: none !important; }
+
+/* Admin banner */
+.admin-banner {
+  background: linear-gradient(135deg, rgba(201,149,42,0.15), rgba(0,53,128,0.2));
+  border: 1px solid rgba(201,149,42,0.3);
+  border-radius: 12px; padding: 1.2rem 1.5rem;
+  margin-bottom: 2rem;
+  display: flex; align-items: center; gap: 1rem;
+}
+.admin-banner .icon { font-size: 1.8rem; }
+.admin-banner p { color: var(--gray); font-size: 0.85rem; margin-top: 0.2rem; }
+
+/* Filas de la tabla general clickables */
+.scoreboard-table tbody tr { cursor: pointer; transition: background 0.2s; }
+.scoreboard-table tbody tr:hover td { background: rgba(201,149,42,0.1); }
+
+/* Modal de lectura de predicciones */
+.preds-list { max-height: 50vh; overflow-y: auto; margin-top: 1rem; padding-right: 0.5rem; }
+.preds-list::-webkit-scrollbar { width: 6px; }
+.preds-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+.pred-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.85rem;
+}
+.pred-item:last-child { border: none; }
+.pred-score { font-family: var(--font-mono); font-size: 1rem; color: var(--gold-lt); background: rgba(0,0,0,0.3); padding: 0.2rem 0.6rem; border-radius: 4px; margin: 0 0.8rem; }
+
+/* Botón toggle de privacidad */
+.btn-toggle-share { font-size: 0.85rem; background: rgba(255,255,255,0.08); border: none; color: var(--cream); padding: 0.4rem 0.8rem; border-radius: 20px; cursor: pointer; transition: background 0.2s; }
+.btn-toggle-share:hover { background: rgba(255,255,255,0.15); }
+.btn-toggle-share.is-public { background: rgba(26,127,75,0.3); color: #55efc4; }
+
 </style>
 </head>
 <body>
@@ -373,23 +448,46 @@ body::before {
     <header class="header">
       <div class="header-brand">⚽ PRODE 2026</div>
       <div class="header-user">
+        <button id="btn-share-toggle" class="btn-toggle-share hidden" onclick="toggleShare()"></button>
         <span>Hola, <strong id="header-name"></strong></span>
         <button class="btn btn-sm btn-outline" onclick="doLogout()">Salir</button>
       </div>
     </header>
 
     <nav class="nav-tabs" id="nav-tabs">
-      <div class="nav-tab active" onclick="showTab('predictions')" data-tab="predictions">Mis Predicciones</div>
+      <div class="nav-tab active" id="tab-btn-predictions" onclick="showTab('predictions')" data-tab="predictions">Mis Predicciones</div>
       <div class="nav-tab" onclick="showTab('scoreboard')" data-tab="scoreboard">Tabla General</div>
-      <div class="nav-tab hidden" id="tab-admin" onclick="showTab('admin')" data-tab="admin">⚙ Admin</div>
+      <div class="nav-tab hidden" id="tab-btn-admin" onclick="showTab('admin')" data-tab="admin">⚙ Admin</div>
     </nav>
 
     <div class="content">
 
-      <!-- PREDICCIONES -->
+  <!--MODAL-->
+	<div id="modal-view-preds" class="modal-overlay hidden">
+	  <div class="modal" style="max-width: 450px;">
+		<h4>PREDICCIONES DE <span id="view-preds-name" style="color:var(--cream)"></span></h4>
+		<div class="preds-list" id="view-preds-list">
+		  </div>
+		<div class="modal-actions" style="margin-top: 1.5rem;">
+		  <button class="btn btn-primary" onclick="closeUserPreds()">Cerrar</button>
+		</div>
+	  </div>
+	</div>
+
+      <!-- PREDICCIONES (solo jugadores) -->
       <div id="tab-predictions">
         <h2 class="section-title">MIS PREDICCIONES</h2>
         <p class="section-sub">Podés cargar o modificar tu predicción antes de que empiece cada partido.</p>
+        
+        <div class="filters-bar">
+          <label for="sort-matches">Ordenar por:</label>
+          <select id="sort-matches" onchange="renderPredictions()">
+            <option value="group">Fase de Grupos (A-L)</option>
+            <option value="date">Fecha y Hora (Cronológico)</option>
+            <option value="team">Equipos (Alfabético Local)</option>
+          </select>
+        </div>
+
         <div id="predictions-content"></div>
       </div>
 
@@ -404,6 +502,15 @@ body::before {
       <div id="tab-admin-content" class="hidden">
         <h2 class="section-title">PANEL ADMIN</h2>
         <p class="section-sub">Gestioná usuarios y cargá los resultados reales de los partidos.</p>
+
+        <div class="admin-banner">
+          <span class="icon">🛡️</span>
+          <div>
+            <strong>Modo administrador</strong>
+            <p>Podés crear usuarios, cambiar sus claves y cargar los resultados de cada partido. El admin no participa en el prode.</p>
+          </div>
+        </div>
+
         <div class="admin-grid">
           <!-- Users -->
           <div class="panel">
@@ -414,20 +521,48 @@ body::before {
             <div class="inline-form">
               <input type="text"     id="new-user-id"   placeholder="usuario (sin espacios)">
               <input type="text"     id="new-user-name" placeholder="nombre visible">
-              <input type="text"     id="new-user-pass" placeholder="clave">
+              <input type="password" id="new-user-pass" placeholder="clave">
               <button class="btn btn-success btn-sm" onclick="createUser()">Crear usuario</button>
             </div>
           </div>
           <!-- Results -->
           <div class="panel">
-            <h3>RESULTADOS REALES</h3>
-            <p style="font-size:0.8rem; color:var(--gray); margin-bottom:1rem;">Cargá el resultado oficial de cada partido para calcular los puntos.</p>
-            <div id="admin-results-list"></div>
+		  <h3>RESULTADOS REALES</h3>
+		  <p style="font-size:0.8rem; color:var(--gray); margin-bottom:1rem;">Completá los marcadores y presioná <strong style="color:var(--cream)">Guardar resultados</strong>.</p>
+		  
+		  <div class="filters-bar" style="margin-bottom: 1rem; padding: 0.6rem;">
+			<label for="admin-sort-matches" style="font-size: 0.7rem;">Ordenar:</label>
+			<select id="admin-sort-matches" onchange="renderAdminResults()" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">
+			  <option value="group">Por Grupo</option>
+			  <option value="date">Por Fecha/Hora</option>
+			  <option value="team">Por Equipo</option>
+			</select>
+		  </div>
+
+  <div id="admin-results-list"></div>
+  <div style="margin-top:1.2rem">
+    <button class="btn btn-success" style="width:100%" onclick="saveAllResults()">Guardar resultados</button>
+  </div>
+</div>
           </div>
-        </div>
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- Modal cambiar contraseña -->
+<div id="modal-pass" class="modal-overlay hidden">
+  <div class="modal">
+    <h4>CAMBIAR CLAVE</h4>
+    <p style="color:var(--gray);font-size:0.85rem;margin-bottom:1rem;">Usuario: <strong id="modal-pass-user"></strong></p>
+    <div class="inline-form">
+      <input type="password" id="modal-new-pass" placeholder="Nueva clave">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closePassModal()">Cancelar</button>
+      <button class="btn btn-amber btn-sm" onclick="saveNewPass()">Guardar clave</button>
     </div>
   </div>
 </div>
@@ -436,12 +571,10 @@ body::before {
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
-// NOTA: ya NO guardamos la contraseña en memoria.
-// La autenticación se maneja por cookie de sesión del servidor.
-let session = null;   // { username, displayName, isAdmin }
-let allMatches = [];
+let session = null;   // { token, username, displayName, isAdmin }
+let allMatches   = [];
 let myPredictions = {};
-let realResults = {};
+let realResults  = {};
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function toast(msg, type = 'info') {
@@ -455,45 +588,111 @@ function toast(msg, type = 'info') {
 async function api(method, path, body) {
   const opts = {
     method,
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin', // envía la cookie de sesión automáticamente
+    headers: { 'Content-Type': 'application/json' }
   };
+  if (session?.token) opts.headers['Authorization'] = `Bearer ${session.token}`;
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(path, opts);
-  // Si la sesión expiró en el servidor, volvemos al login
-  if (r.status === 401 && path !== '/api/login') {
-    toast('Tu sesión expiró. Volvé a iniciar sesión.', 'error');
-    doLogout(false);
-    return {};
-  }
   return r.json();
 }
 
 function isMatchLocked(match) {
   const matchDt = new Date(`${match.date}T${match.time}:00`);
-  const lockDt  = new Date(matchDt.getTime() - 60 * 60 * 1000);
-  return new Date() > lockDt;
+  return Date.now() > matchDt.getTime() - 60 * 60 * 1000;
 }
 
 function lockLabel(match) {
   const matchDt = new Date(`${match.date}T${match.time}:00`);
   const lockDt  = new Date(matchDt.getTime() - 60 * 60 * 1000);
-  const now = new Date();
+  const now = Date.now();
   if (now > matchDt) return 'Finalizado / En curso';
   if (now > lockDt)  return 'Cerrado (1h antes del partido)';
   const mins = Math.round((lockDt - now) / 60000);
-  if (mins < 60) return 'Cierra en ' + mins + 'min';
-  const hrs = Math.floor(mins / 60);
-  return 'Cierra en ~' + hrs + 'h';
+  return mins < 60 ? `Cierra en ${mins}min` : `Cierra en ~${Math.floor(mins/60)}h`;
 }
 
 function matchOutcome(g1, g2) {
-  if (g1 > g2) return 'L';
-  if (g1 < g2) return 'V';
-  return 'E';
+  return g1 > g2 ? 'L' : g1 < g2 ? 'V' : 'E';
+}
+
+function calcPoints(pred, real) {
+  if (pred.g1 === real.g1 && pred.g2 === real.g2) return 3;
+  if (matchOutcome(pred.g1, pred.g2) === matchOutcome(real.g1, real.g2)) return 2;
+  return 1;
+}
+
+function ptLabel(pts) {
+  return pts === 3 ? 'Resultado exacto' : pts === 2 ? 'Ganador/empate correcto' : 'Participación';
 }
 
 const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+
+// Actualiza el botón visualmente según el estado de la sesión
+function updateShareBtnVisuals() {
+  const btn = document.getElementById('btn-share-toggle');
+  if (session.isAdmin) {
+    btn.classList.add('hidden'); // El admin no juega, no comparte
+    return;
+  }
+  btn.classList.remove('hidden');
+  if (session.sharePredictions) {
+    btn.textContent = '👁️ Perfil Público';
+    btn.classList.add('is-public');
+  } else {
+    btn.textContent = '🙈 Perfil Privado';
+    btn.classList.remove('is-public');
+  }
+}
+
+// Función para cambiar la privacidad al hacer click
+async function toggleShare() {
+  const newState = !session.sharePredictions;
+  const data = await api('PATCH', '/api/me/share', { share: newState });
+  if (data.error) { toast(data.error, 'error'); return; }
+  
+  session.sharePredictions = newState;
+  updateShareBtnVisuals();
+  toast(newState ? 'Ahora todos pueden ver tus predicciones' : 'Tus predicciones son privadas', 'info');
+}
+
+// Abre el modal para ver predicciones de otro usuario
+async function viewUserPreds(userId, displayName) {
+  // Pedimos las predicciones al servidor
+  const data = await api('GET', `/api/predictions?username=${userId}`);
+  
+  // Si nos tira 403, es porque las tiene privadas
+  if (data.error) { toast(data.error, 'error'); return; }
+  
+  // Si no hay error, armamos la lista
+  const container = document.getElementById('view-preds-list');
+  document.getElementById('view-preds-name').textContent = displayName.toUpperCase();
+  let html = '';
+  
+  // Filtramos solo los partidos donde el usuario puso algo
+  const userPreds = Object.entries(data);
+  if (userPreds.length === 0) {
+    html = '<div class="empty" style="padding:1rem">Aún no cargó predicciones.</div>';
+  } else {
+    // Para mostrar los nombres de los equipos, cruzamos con allMatches
+    for (const [matchId, pred] of userPreds) {
+      const m = allMatches.find(x => x.id === matchId);
+      if (!m) continue;
+      html += `
+        <div class="pred-item">
+          <span style="flex:1; text-align:right">${m.t1}</span>
+          <span class="pred-score">${pred.g1} - ${pred.g2}</span>
+          <span style="flex:1">${m.t2}</span>
+        </div>`;
+    }
+  }
+  
+  container.innerHTML = html;
+  document.getElementById('modal-view-preds').classList.remove('hidden');
+}
+
+function closeUserPreds() {
+  document.getElementById('modal-view-preds').classList.add('hidden');
+}
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 async function doLogin() {
@@ -503,61 +702,71 @@ async function doLogin() {
     document.getElementById('login-error').textContent = 'Completá usuario y clave.';
     return;
   }
-
   const data = await api('POST', '/api/login', { username, password });
   if (data.error) {
     document.getElementById('login-error').textContent = data.error;
     return;
   }
 
-  session = data; // { username, displayName, isAdmin } — sin contraseña
-  enterApp();
+  // CORRECCIÓN: Agregamos sharePredictions al objeto
+  session = { 
+    token: data.token, 
+    username: data.username, 
+    displayName: data.displayName, 
+    isAdmin: data.isAdmin,
+    sharePredictions: data.sharePredictions 
+  };
+
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  document.getElementById('header-name').textContent = data.displayName;
+  updateShareBtnVisuals();
+
+  // Admin sees only Admin tab + Scoreboard; players see Predictions + Scoreboard
+  if (data.isAdmin) {
+    document.getElementById('tab-btn-predictions').classList.add('hidden');
+    document.getElementById('tab-btn-admin').classList.remove('hidden');
+    showTab('admin');
+  } else {
+    document.getElementById('tab-btn-predictions').classList.remove('hidden');
+    document.getElementById('tab-btn-admin').classList.add('hidden');
+    showTab('predictions');
+  }
+
   await loadAll();
 }
 
-function enterApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('main-app').style.display = 'block';
-  document.getElementById('header-name').textContent = session.displayName;
-  if (session.isAdmin) document.getElementById('tab-admin').classList.remove('hidden');
-}
-
-async function doLogout(callServer = true) {
-  if (callServer) await api('POST', '/api/logout');
+async function doLogout() {
+  if (session?.token) await api('POST', '/api/logout');
   session = null;
   document.getElementById('login-screen').style.display = '';
   document.getElementById('main-app').style.display = 'none';
   document.getElementById('login-error').textContent = '';
   document.getElementById('login-user').value = '';
   document.getElementById('login-pass').value = '';
-  document.getElementById('tab-admin').classList.add('hidden');
-}
-
-// Restaurar sesión si el usuario recarga la página
-async function tryRestoreSession() {
-  const data = await fetch('/api/me', { credentials: 'same-origin' }).then(r => r.json()).catch(() => ({}));
-  if (data.username) {
-    session = data;
-    enterApp();
-    await loadAll();
-  }
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function loadAll() {
-  [allMatches, myPredictions, realResults] = await Promise.all([
+  [allMatches, realResults] = await Promise.all([
     api('GET', '/api/matches'),
-    api('GET', '/api/predictions'),
     api('GET', '/api/results'),
   ]);
-  renderPredictions();
+
+  if (!session.isAdmin) {
+    myPredictions = await api('GET', '/api/predictions');
+    renderPredictions();
+  }
+
   renderScoreboard();
   if (session.isAdmin) renderAdmin();
 }
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
 function showTab(tab) {
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
   document.getElementById('tab-predictions').classList.toggle('hidden', tab !== 'predictions');
   document.getElementById('tab-scoreboard').classList.toggle('hidden', tab !== 'scoreboard');
   document.getElementById('tab-admin-content').classList.toggle('hidden', tab !== 'admin');
@@ -567,27 +776,55 @@ function showTab(tab) {
 
 // ── Render: Predictions ───────────────────────────────────────────────────────
 function renderPredictions() {
+  if (session.isAdmin) return;
   const container = document.getElementById('predictions-content');
+  const sortMode = document.getElementById('sort-matches')?.value || 'group';
   let html = '';
 
-  for (const grp of GROUPS) {
-    const groupMatches = allMatches.filter(m => m.group === grp);
-    html += `<div class="group-section"><div class="group-header">GRUPO ${grp}</div>`;
+  // 1. Organizar los partidos según el filtro seleccionado
+  let matchGroups = [];
 
-    for (const m of groupMatches) {
-      const locked = isMatchLocked(m);
-      const pred = myPredictions[m.id];
-      const real = realResults[m.id];
-      const hasPred = pred && pred.g1 != null && pred.g2 != null;
-      const hasReal = real && real.g1 != null && real.g2 != null;
-      let pts = null;
-      if (hasPred && hasReal) pts = calcPoints(pred, real);
+  if (sortMode === 'group') {
+    for (const grp of GROUPS) {
+      const matches = allMatches.filter(m => m.group === grp);
+      if (matches.length) matchGroups.push({ title: `GRUPO ${grp}`, matches });
+    }
+  } else if (sortMode === 'date') {
+    const sorted = [...allMatches].sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+    matchGroups.push({ title: 'ORDEN CRONOLÓGICO', matches: sorted });
+  } else if (sortMode === 'team') {
+    const sorted = [...allMatches].sort((a, b) => a.t1.localeCompare(b.t1));
+    matchGroups.push({ title: 'ORDEN ALFABÉTICO (POR LOCAL)', matches: sorted });
+  }
+
+  // 2. Renderizar las tarjetas
+  for (const grp of matchGroups) {
+    html += `<div class="group-section"><div class="group-header">${grp.title}</div>`;
+
+    for (const m of grp.matches) {
+      const locked   = isMatchLocked(m);
+      const pred     = myPredictions[m.id];
+      const real     = realResults[m.id];
+      
+      // Chequeo estricto para saber si hay datos ingresados
+      const hasPred  = pred && pred.g1 !== null && pred.g2 !== null && pred.g1 !== '' && pred.g2 !== '';
+      const hasReal  = real && real.g1 != null && real.g2 != null;
+      const pts      = hasPred && hasReal ? calcPoints(pred, real) : null;
 
       const dateStr = new Date(m.date + 'T12:00').toLocaleDateString('es-AR', { weekday:'short', day:'numeric', month:'short' });
       const statusBadge = hasReal
         ? `<span class="badge played">Jugado ${real.g1}–${real.g2}</span>`
         : locked ? `<span class="badge started">${lockLabel(m)}</span>` : '';
-      const cardClass = ['match-card', locked ? 'locked' : '', hasPred && !hasReal ? 'saved' : ''].join(' ').trim();
+
+      // LÓGICA DE COLORES: verde si guardó, rojo si falta (solo si no está bloqueado)
+      let colorClass = '';
+      if (hasPred) {
+        colorClass = 'saved';
+      } else if (!locked) {
+        colorClass = 'unsaved';
+      }
+
+      const cardClass = `match-card ${locked ? 'locked' : ''} ${colorClass}`.trim();
 
       html += `<div class="${cardClass}" id="mc-${m.id}">
         <div class="match-meta">
@@ -597,7 +834,7 @@ function renderPredictions() {
           ${statusBadge}
           ${pts !== null ? `<span class="pts-badge pts-${pts}" style="margin-left:auto" title="${ptLabel(pts)}">${pts}pt</span>` : ''}
         </div>
-        <div class="team-name team-left">${m.t1}</div>
+        <div></div> <div class="team-name team-left">${m.t1}</div>
         <div class="score-inputs">
           <input class="score-input" type="number" min="0" max="99" id="g1-${m.id}"
             value="${hasPred ? pred.g1 : ''}" ${locked ? 'disabled' : ''}
@@ -608,24 +845,12 @@ function renderPredictions() {
             onchange="autoSave('${m.id}')">
         </div>
         <div class="team-name team-right">${m.t2}</div>
-        ${!locked ? `<div class="match-actions">
-          <button class="btn btn-sm btn-primary" onclick="savePred('${m.id}')">Guardar</button>
-        </div>` : ''}
+
       </div>`;
     }
     html += '</div>';
   }
   container.innerHTML = html;
-}
-
-function ptLabel(pts) {
-  return pts === 3 ? 'Resultado exacto' : pts === 2 ? 'Ganador/empate correcto' : 'Participación';
-}
-
-function calcPoints(pred, real) {
-  if (pred.g1 === real.g1 && pred.g2 === real.g2) return 3;
-  if (matchOutcome(pred.g1, pred.g2) === matchOutcome(real.g1, real.g2)) return 2;
-  return 1;
 }
 
 function autoSave(matchId) {
@@ -635,29 +860,35 @@ function autoSave(matchId) {
 }
 
 async function savePred(matchId, silent = false) {
+  if (session.isAdmin) return; // double-check
   const g1 = parseInt(document.getElementById(`g1-${matchId}`)?.value);
   const g2 = parseInt(document.getElementById(`g2-${matchId}`)?.value);
   if (isNaN(g1) || isNaN(g2) || g1 < 0 || g2 < 0) {
     if (!silent) toast('Ingresá valores válidos (números >= 0)', 'error');
     return;
   }
-  // Ya no mandamos usuario ni contraseña: el servidor los lee de la sesión
   const data = await api('POST', '/api/predictions', { matchId, g1, g2 });
   if (data.error) { toast(data.error, 'error'); return; }
   myPredictions[matchId] = { g1, g2 };
   if (!silent) toast('Predicción guardada ✓', 'success');
   const card = document.getElementById(`mc-${matchId}`);
-  if (card) card.classList.add('saved');
+  if (card) {
+    card.classList.add('saved');
+    card.classList.remove('unsaved');
+  }
 }
 
 // ── Render: Scoreboard ────────────────────────────────────────────────────────
 async function renderScoreboard() {
   const data = await api('GET', '/api/scoreboard');
-  if (!Array.isArray(data) || !data.length) {
-    document.getElementById('scoreboard-content').innerHTML = '<div class="empty">Aún no hay partidos jugados.</div>';
+  const container = document.getElementById('scoreboard-content');
+  if (!data.length) {
+    container.innerHTML = '<div class="empty">Aún no hay partidos jugados.</div>';
     return;
   }
   const maxPts = data[0]?.total || 1;
+  
+  // CORRECCIÓN: Le sacamos el onclick al <tr> del thead
   let html = `<table class="scoreboard-table">
     <thead><tr>
       <th>#</th><th>Jugador</th><th>Puntos</th>
@@ -665,14 +896,16 @@ async function renderScoreboard() {
     </tr></thead><tbody>`;
 
   data.forEach((u, i) => {
-    const rank = i + 1;
-    const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-n';
+    const rank    = i + 1;
+    const rankCls = rank <= 3 ? `rank-${rank}` : 'rank-n';
     const exact   = Object.values(u.breakdown).filter(b => b.points === 3).length;
     const correct = Object.values(u.breakdown).filter(b => b.points === 2).length;
     const part    = Object.values(u.breakdown).filter(b => b.points === 1).length;
-    const pct = (u.total / maxPts) * 100;
-    html += `<tr>
-      <td><span class="rank-badge ${rankClass}">${rank}</span></td>
+    const pct     = maxPts > 0 ? (u.total / maxPts) * 100 : 0;
+
+    // CORRECCIÓN: Se lo ponemos a este <tr> que es el de cada jugador
+    html += `<tr onclick="viewUserPreds('${u.userId}', '${u.displayName}')">
+      <td><span class="rank-badge ${rankCls}">${rank}</span></td>
       <td style="font-weight:600">${u.displayName}</td>
       <td>
         <div class="score-bar-wrap">
@@ -685,32 +918,33 @@ async function renderScoreboard() {
       <td style="color:var(--gray);font-family:var(--font-mono)">${part}</td>
     </tr>`;
   });
+
   html += '</tbody></table>';
-  document.getElementById('scoreboard-content').innerHTML = html;
+  container.innerHTML = html;
 }
 
 // ── Render: Admin ─────────────────────────────────────────────────────────────
 async function renderAdmin() {
-  if (!session?.isAdmin) return;
+  if (!session.isAdmin) return;
   await loadAdminUsers();
   renderAdminResults();
 }
 
 async function loadAdminUsers() {
-  // Sin adminUser/adminPass en la URL: el servidor valida por sesión
   const users = await api('GET', '/api/users');
   const container = document.getElementById('users-list');
-  if (!Array.isArray(users) || !users.length) {
-    container.innerHTML = '<div class="empty" style="padding:1rem">Sin usuarios registrados.</div>';
-    return;
-  }
+  if (users.error) { container.innerHTML = `<div class="empty">${users.error}</div>`; return; }
+  if (!users.length) { container.innerHTML = '<div class="empty" style="padding:1rem">Sin usuarios registrados.</div>'; return; }
   container.innerHTML = users.map(u => `
     <div class="user-row">
       <div class="user-info">
         <strong>${u.displayName}</strong>
-        <code>${u.id} / ${u.password}</code>
+        <code>${u.id}</code>
       </div>
-      <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')">✕</button>
+      <div class="user-actions">
+        <button class="btn btn-sm btn-amber" onclick="openPassModal('${u.id}')" title="Cambiar clave">🔑</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')">✕</button>
+      </div>
     </div>`).join('');
 }
 
@@ -730,55 +964,150 @@ async function createUser() {
 }
 
 async function deleteUser(userId) {
-  if (!confirm(`¿Eliminár al usuario "${userId}"?`)) return;
+  if (!confirm(`¿Eliminar al usuario "${userId}"? Se borrarán también sus predicciones.`)) return;
   const data = await api('DELETE', `/api/users/${userId}`);
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Usuario eliminado', 'info');
   loadAdminUsers();
 }
 
+// ── Change password modal ─────────────────────────────────────────────────────
+let _passTargetUser = null;
+
+function openPassModal(userId) {
+  _passTargetUser = userId;
+  document.getElementById('modal-pass-user').textContent = userId;
+  document.getElementById('modal-new-pass').value = '';
+  document.getElementById('modal-pass').classList.remove('hidden');
+  setTimeout(() => document.getElementById('modal-new-pass').focus(), 50);
+}
+
+function closePassModal() {
+  _passTargetUser = null;
+  document.getElementById('modal-pass').classList.add('hidden');
+}
+
+async function saveNewPass() {
+  const pass = document.getElementById('modal-new-pass').value.trim();
+  if (!pass) { toast('Ingresá una nueva clave', 'error'); return; }
+  const data = await api('PATCH', `/api/users/${_passTargetUser}/password`, { password: pass });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast(`Clave de "${_passTargetUser}" actualizada ✓`, 'success');
+  closePassModal();
+}
+
+// ── Admin: Results ────────────────────────────────────────────────────────────
+function isMatchFinished(match) {
+  // A match is considered finished if it has a real result AND the match time has passed
+  const matchDt = new Date(`${match.date}T${match.time}:00`);
+  return realResults[match.id] != null && Date.now() > matchDt.getTime();
+}
+
 function renderAdminResults() {
+  if (!session.isAdmin) return;
   const container = document.getElementById('admin-results-list');
+  const sortMode = document.getElementById('admin-sort-matches')?.value || 'group';
   let html = '';
-  for (const m of allMatches) {
-    const real = realResults[m.id];
-    html += `<div class="result-match">
-      <span style="font-size:0.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.t1}</span>
-      <div class="result-score-inputs">
-        <input class="result-input" type="number" min="0" id="rg1-${m.id}" value="${real?.g1 ?? ''}" placeholder="–">
-        <span style="color:var(--gray);font-size:0.85rem">–</span>
-        <input class="result-input" type="number" min="0" id="rg2-${m.id}" value="${real?.g2 ?? ''}" placeholder="–">
-        <button class="btn btn-sm btn-success" onclick="saveResult('${m.id}')" title="Guardar resultado">✓</button>
-      </div>
-      <span style="font-size:0.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${m.t2}</span>
-      <span class="saved-badge" id="rb-${m.id}">${real ? '✓' : ''}</span>
-    </div>`;
+
+  // 1. Organizar partidos según el filtro
+  let matchGroups = [];
+  if (sortMode === 'group') {
+    for (const grp of GROUPS) {
+      const matches = allMatches.filter(m => m.group === grp);
+      if (matches.length) matchGroups.push({ title: `GRUPO ${grp}`, matches });
+    }
+  } else if (sortMode === 'date') {
+    const sorted = [...allMatches].sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+    matchGroups.push({ title: 'ORDEN CRONOLÓGICO', matches: sorted });
+  } else if (sortMode === 'team') {
+    const sorted = [...allMatches].sort((a, b) => a.t1.localeCompare(b.t1));
+    matchGroups.push({ title: 'ORDEN POR EQUIPO LOCAL', matches: sorted });
+  }
+
+  // 2. Renderizar con fecha y hora
+  for (const group of matchGroups) {
+    if (sortMode === 'group') {
+      html += `<div style="font-size:0.7rem; color:var(--gold); letter-spacing:1px; margin: 1rem 0 0.5rem 0; font-weight:bold; border-bottom:1px solid rgba(201,149,42,0.2)">${group.title}</div>`;
+    }
+
+    for (const m of group.matches) {
+      const real     = realResults[m.id];
+      const finished = isMatchFinished(m);
+      const lockCls  = finished ? ' result-locked' : '';
+      const dateStr  = new Date(m.date + 'T12:00').toLocaleDateString('es-AR', { day:'numeric', month:'short' });
+
+      html += `<div class="result-match${lockCls}">
+        <div style="font-size:0.65rem; color:var(--gray); display:flex; flex-direction:column; line-height:1.2">
+          <span style="color:var(--cream)">${dateStr}</span>
+          <span style="font-family:var(--font-mono); opacity:0.8">${m.time}</span>
+        </div>
+
+        <span style="font-size:0.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${m.t1}">${m.t1}</span>
+        
+        <div class="result-score-inputs">
+          <input class="result-input" type="number" min="0" id="rg1-${m.id}"
+            value="${real?.g1 ?? ''}" placeholder="–" ${finished ? 'disabled' : ''}>
+          <span style="color:var(--gray);font-size:0.85rem">–</span>
+          <input class="result-input" type="number" min="0" id="rg2-${m.id}"
+            value="${real?.g2 ?? ''}" placeholder="–" ${finished ? 'disabled' : ''}>
+        </div>
+
+        <span style="font-size:0.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right" title="${m.t2}">${m.t2}</span>
+        
+        <span class="${finished ? 'result-label-played' : 'saved-badge'}" id="rb-${m.id}">
+          ${finished ? '🔒' : (real ? '✓' : '')}
+        </span>
+      </div>`;
+    }
   }
   container.innerHTML = html;
 }
 
-async function saveResult(matchId) {
-  const g1 = parseInt(document.getElementById(`rg1-${matchId}`).value);
-  const g2 = parseInt(document.getElementById(`rg2-${matchId}`).value);
-  if (isNaN(g1) || isNaN(g2)) { toast('Ingresá ambos goles', 'error'); return; }
-  // Sin adminUser/adminPass: el servidor valida por sesión
-  const data = await api('POST', '/api/results', { matchId, g1, g2 });
-  if (data.error) { toast(data.error, 'error'); return; }
-  realResults[matchId] = { g1, g2 };
-  document.getElementById(`rb-${matchId}`).textContent = '✓';
-  toast(`Resultado ${g1}–${g2} guardado ✓`, 'success');
-  renderPredictions();
+async function saveAllResults() {
+  const pending = [];
+  for (const m of allMatches) {
+    if (isMatchFinished(m)) continue; // skip locked matches
+    const g1el = document.getElementById(`rg1-${m.id}`);
+    const g2el = document.getElementById(`rg2-${m.id}`);
+    const g1 = parseInt(g1el?.value);
+    const g2 = parseInt(g2el?.value);
+    // Only save if both values are filled in
+    if (isNaN(g1) || isNaN(g2)) continue;
+    pending.push({ matchId: m.id, g1, g2 });
+  }
+
+  if (!pending.length) {
+    toast('No hay resultados nuevos para guardar', 'info');
+    return;
+  }
+
+  let saved = 0, errors = 0;
+  for (const item of pending) {
+    const data = await api('POST', '/api/results', item);
+    if (data.error) { errors++; continue; }
+    realResults[item.matchId] = { g1: item.g1, g2: item.g2 };
+    const badge = document.getElementById(`rb-${item.matchId}`);
+    if (badge) badge.textContent = '✓';
+    saved++;
+  }
+
+  if (saved > 0 && errors === 0) toast(`${saved} resultado${saved > 1 ? 's' : ''} guardado${saved > 1 ? 's' : ''} ✓`, 'success');
+  else if (saved > 0) toast(`${saved} guardados, ${errors} con error`, 'info');
+  else toast('Error al guardar resultados', 'error');
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') {
     doLogin();
   }
+  if (e.key === 'Escape') closePassModal();
 });
 
-// Al cargar la página, intentar restaurar sesión existente
-tryRestoreSession();
+// Close modal clicking outside
+document.getElementById('modal-pass').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-pass')) closePassModal();
+});
 </script>
 </body>
 </html>

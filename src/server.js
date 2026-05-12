@@ -1,167 +1,187 @@
 // src/server.js
 require('dotenv').config();
 
-const express      = require('express');
-const session      = require('express-session');
-const path         = require('path');
-const pool         = require('./db');
+const express   = require('express');
+const crypto    = require('crypto');
+const path      = require('path');
+const pool      = require('./db');
 const { MATCHES, calcPoints } = require('./matches');
 
 const app  = express();
 const PORT = parseInt(process.env.PORT || '3000');
 
-// ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json());
 app.set('trust proxy', 1);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-app.use(session({
-  secret:            process.env.SESSION_SECRET || 'dev-secret-change-me',
-  resave:            false,
-  saveUninitialized: false,
-  cookie: {
-    secure:   process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge:   7 * 24 * 60 * 60 * 1000,
-    sameSite: 'none',
-  },
-}));
+// ── Crypto ────────────────────────────────────────────────────────────────────
+function hashPassword(password, salt) {
+  if (!salt) salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  return { hash, salt };
+}
+function verifyPassword(password, storedHash, storedSalt) {
+  return hashPassword(password, storedSalt).hash === storedHash;
+}
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Token store ───────────────────────────────────────────────────────────────
+const tokens = new Map();
+const TOKEN_TTL_MS = 8 * 60 * 60 * 1000;
+
+function createToken(username) {
+  const token = crypto.randomBytes(32).toString('hex');
+  tokens.set(token, { username, expires: Date.now() + TOKEN_TTL_MS });
+  return token;
+}
+function validateToken(token) {
+  if (!token) return null;
+  const entry = tokens.get(token);
+  if (!entry) return null;
+  if (Date.now() > entry.expires) { tokens.delete(token); return null; }
+  return entry.username;
+}
+function revokeToken(token) { if (token) tokens.delete(token); }
+function getToken(req) {
+  const auth = req.headers['authorization'] || '';
+  return auth.startsWith('Bearer ') ? auth.slice(7) : null;
+}
+
+// ── Auth middleware ───────────────────────────────────────────────────────────
 function requireAuth(req, res, next) {
-  if (!req.session?.user) return res.status(401).json({ error: 'No autenticado' });
+  const username = validateToken(getToken(req));
+  if (!username) return res.status(401).json({ error: 'No autorizado' });
+  req.username = username;
   next();
 }
-
-function requireAdmin(req, res, next) {
-  if (!req.session?.user?.isAdmin) return res.status(403).json({ error: 'No autorizado' });
-  next();
+async function requireAdmin(req, res, next) {
+  const username = validateToken(getToken(req));
+  if (!username) return res.status(401).json({ error: 'No autorizado' });
+  try {
+    const { rows } = await pool.query('SELECT is_admin FROM users WHERE username = $1', [username]);
+    if (!rows[0]?.is_admin) return res.status(403).json({ error: 'No autorizado' });
+    req.username = username;
+    next();
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Error interno' });
+  }
 }
 
-// ── Rutas: Auth ───────────────────────────────────────────────────────────────
+// ── POST /api/login ───────────────────────────────────────────────────────────
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Faltan datos' });
-
   try {
     const { rows } = await pool.query(
-      'SELECT username, password, display_name, is_admin FROM users WHERE username = $1',
+      'SELECT username, password_hash, password_salt, display_name, is_admin, share_predictions FROM users WHERE username = $1',
       [username]
     );
     const user = rows[0];
-    if (!user || user.password !== password) {
+    if (!user || !verifyPassword(password, user.password_hash, user.password_salt)) {
       return res.status(401).json({ error: 'Usuario o clave incorrectos' });
     }
-    req.session.user = {
-      username:    user.username,
-      displayName: user.display_name,
-      isAdmin:     user.is_admin,
-    };
-    res.json({
-      username:    user.username,
-      displayName: user.display_name,
-      isAdmin:     user.is_admin,
-    });
+    const token = createToken(username);
+    res.json({ token, username: user.username, displayName: user.display_name, isAdmin: user.is_admin, sharePredictions: user.share_predictions || false });
   } catch (err) {
     console.error('Login error:', err.message);
     res.status(500).json({ error: 'Error interno' });
   }
 });
 
-app.post('/api/logout', (req, res) => {
-  req.session.destroy(() => res.json({ ok: true }));
-});
+// ── POST /api/logout ──────────────────────────────────────────────────────────
+app.post('/api/logout', (req, res) => { revokeToken(getToken(req)); res.json({ ok: true }); });
 
-app.get('/api/me', (req, res) => {
-  if (!req.session?.user) return res.status(401).json({ error: 'No autenticado' });
-  res.json(req.session.user);
-});
+// ── GET /api/matches ──────────────────────────────────────────────────────────
+app.get('/api/matches', requireAuth, (_req, res) => res.json(MATCHES));
 
-// ── Rutas: Partidos ───────────────────────────────────────────────────────────
-app.get('/api/matches', requireAuth, (_req, res) => {
-  res.json(MATCHES);
-});
-
-// ── Rutas: Resultados ─────────────────────────────────────────────────────────
+// ── GET /api/results ──────────────────────────────────────────────────────────
 app.get('/api/results', requireAuth, async (_req, res) => {
   try {
     const { rows } = await pool.query('SELECT match_id, g1, g2 FROM results');
     const results = {};
     for (const r of rows) results[r.match_id] = { g1: r.g1, g2: r.g2 };
     res.json(results);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Error interno' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
+// ── POST /api/results  (admin) ────────────────────────────────────────────────
 app.post('/api/results', requireAdmin, async (req, res) => {
   const { matchId, g1, g2 } = req.body;
-  if (!matchId || g1 == null || g2 == null) return res.status(400).json({ error: 'Faltan datos' });
+  if (!matchId || typeof g1 !== 'number' || typeof g2 !== 'number') return res.status(400).json({ error: 'Datos inválidos' });
   if (!MATCHES.find(m => m.id === matchId)) return res.status(404).json({ error: 'Partido no encontrado' });
-
   try {
-    await pool.query(`
-      INSERT INTO results (match_id, g1, g2, updated_at)
-      VALUES ($1, $2, $3, NOW())
-      ON CONFLICT (match_id) DO UPDATE SET g1 = $2, g2 = $3, updated_at = NOW()
-    `, [matchId, g1, g2]);
+    await pool.query(
+      'INSERT INTO results (match_id, g1, g2, updated_at) VALUES ($1,$2,$3,NOW()) ON CONFLICT (match_id) DO UPDATE SET g1=$2,g2=$3,updated_at=NOW()',
+      [matchId, g1, g2]
+    );
     res.json({ ok: true });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Error interno' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
-// ── Rutas: Predicciones ───────────────────────────────────────────────────────
-app.get('/api/predictions', requireAuth, async (req, res) => {
-  // Admin puede pedir predicciones de cualquier usuario; usuarios solo las propias
-  const targetUser = req.session.user.isAdmin
-    ? (req.query.username || req.session.user.username)
-    : req.session.user.username;
-
+// ── DELETE /api/results/:matchId  (admin) ─────────────────────────────────────
+app.delete('/api/results/:matchId', requireAdmin, async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      'SELECT match_id, g1, g2 FROM predictions WHERE username = $1',
-      [targetUser]
-    );
+    await pool.query('DELETE FROM results WHERE match_id = $1', [req.params.matchId]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
+});
+
+// ── GET /api/predictions ──────────────────────────────────────────────────────
+app.get('/api/predictions', requireAuth, async (req, res) => {
+  try {
+    const { rows: reqRows } = await pool.query('SELECT is_admin FROM users WHERE username = $1', [req.username]);
+    const isAdmin = reqRows[0]?.is_admin;
+    const targetUser = (isAdmin && req.query.username) ? req.query.username : req.username;
+
+    if (!isAdmin && targetUser !== req.username) {
+      const { rows } = await pool.query('SELECT share_predictions FROM users WHERE username = $1', [targetUser]);
+      if (!rows[0]?.share_predictions) {
+        return res.status(403).json({ error: 'Este usuario mantiene sus predicciones en privado 🙈' });
+      }
+    }
+
+    const { rows } = await pool.query('SELECT match_id, g1, g2 FROM predictions WHERE username = $1', [targetUser]);
     const preds = {};
     for (const r of rows) preds[r.match_id] = { g1: r.g1, g2: r.g2 };
     res.json(preds);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Error interno' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
+// ── POST /api/predictions  (jugadores only) ───────────────────────────────────
 app.post('/api/predictions', requireAuth, async (req, res) => {
-  const { matchId, g1, g2 } = req.body;
-  if (!matchId || g1 == null || g2 == null) return res.status(400).json({ error: 'Faltan datos' });
+  try {
+    const { rows } = await pool.query('SELECT is_admin FROM users WHERE username = $1', [req.username]);
+    if (rows[0]?.is_admin) return res.status(403).json({ error: 'El admin no puede cargar predicciones' });
+  } catch (err) { return res.status(500).json({ error: 'Error interno' }); }
 
+  const { matchId, g1, g2 } = req.body;
+  if (!matchId || typeof g1 !== 'number' || typeof g2 !== 'number' || g1 < 0 || g2 < 0) {
+    return res.status(400).json({ error: 'Valores inválidos' });
+  }
   const match = MATCHES.find(m => m.id === matchId);
   if (!match) return res.status(404).json({ error: 'Partido no encontrado' });
-
-  // Verificar que el partido no haya cerrado (1h antes)
-  const matchTime = new Date(`${match.date}T${match.time}:00`);
-  const lockTime  = new Date(matchTime.getTime() - 60 * 60 * 1000);
-  if (new Date() > lockTime) {
+  if (Date.now() > new Date(`${match.date}T${match.time}:00`).getTime() - 3600000) {
     return res.status(403).json({ error: 'Las predicciones cierran 1 hora antes del partido' });
   }
-
   try {
-    await pool.query(`
-      INSERT INTO predictions (username, match_id, g1, g2, saved_at)
-      VALUES ($1, $2, $3, $4, NOW())
-      ON CONFLICT (username, match_id) DO UPDATE SET g1 = $3, g2 = $4, saved_at = NOW()
-    `, [req.session.user.username, matchId, g1, g2]);
+    await pool.query(
+      'INSERT INTO predictions (username, match_id, g1, g2, saved_at) VALUES ($1,$2,$3,$4,NOW()) ON CONFLICT (username, match_id) DO UPDATE SET g1=$3,g2=$4,saved_at=NOW()',
+      [req.username, matchId, g1, g2]
+    );
     res.json({ ok: true });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Error interno' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
-// ── Rutas: Scoreboard ─────────────────────────────────────────────────────────
+// ── PATCH /api/me/share ───────────────────────────────────────────────────────
+app.patch('/api/me/share', requireAuth, async (req, res) => {
+  const share = !!req.body.share;
+  try {
+    await pool.query('UPDATE users SET share_predictions = $1 WHERE username = $2', [share, req.username]);
+    res.json({ ok: true, share });
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
+});
+
+// ── GET /api/scoreboard ───────────────────────────────────────────────────────
 app.get('/api/scoreboard', requireAuth, async (_req, res) => {
   try {
     const [{ rows: users }, { rows: results }, { rows: preds }] = await Promise.all([
@@ -169,16 +189,13 @@ app.get('/api/scoreboard', requireAuth, async (_req, res) => {
       pool.query('SELECT match_id, g1, g2 FROM results'),
       pool.query('SELECT username, match_id, g1, g2 FROM predictions'),
     ]);
-
     const resultsMap = {};
     for (const r of results) resultsMap[r.match_id] = { g1: r.g1, g2: r.g2 };
-
     const predsMap = {};
     for (const p of preds) {
       if (!predsMap[p.username]) predsMap[p.username] = {};
       predsMap[p.username][p.match_id] = { g1: p.g1, g2: p.g2 };
     }
-
     const board = users.map(u => {
       const userPreds = predsMap[u.username] || {};
       let total = 0;
@@ -190,79 +207,67 @@ app.get('/api/scoreboard', requireAuth, async (_req, res) => {
         total += pts;
         breakdown[matchId] = { points: pts, pred, real };
       }
-      // Punto de participación: partidos con pred pero sin resultado todavía
-      for (const [matchId, pred] of Object.entries(userPreds)) {
-        if (!resultsMap[matchId]) {
-          // Partido sin resultado → sumar 1 punto solo si hay predicción
-          // (mantiene el comportamiento original)
-        }
-      }
-      return { username: u.username, displayName: u.display_name, total, breakdown };
+      return { userId: u.username, displayName: u.display_name, total, breakdown };
     });
-
     board.sort((a, b) => b.total - a.total);
     res.json(board);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Error interno' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
-// ── Rutas: Usuarios (Admin) ───────────────────────────────────────────────────
+// ── GET /api/users  (admin) ───────────────────────────────────────────────────
 app.get('/api/users', requireAdmin, async (_req, res) => {
   try {
-    const { rows } = await pool.query(
-      'SELECT username, display_name, password FROM users WHERE is_admin = FALSE ORDER BY username'
-    );
-    res.json(rows.map(u => ({ id: u.username, displayName: u.display_name, password: u.password })));
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Error interno' });
-  }
+    const { rows } = await pool.query('SELECT username, display_name FROM users WHERE is_admin = FALSE ORDER BY username');
+    res.json(rows.map(u => ({ id: u.username, displayName: u.display_name })));
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
+// ── POST /api/users  (admin) ──────────────────────────────────────────────────
 app.post('/api/users', requireAdmin, async (req, res) => {
   const { username, displayName, password } = req.body;
-  if (!username || !displayName || !password) return res.status(400).json({ error: 'Faltan datos' });
+  if (!username || !displayName || !password) return res.status(400).json({ error: 'Faltan campos' });
   if (/\s/.test(username)) return res.status(400).json({ error: 'El usuario no puede tener espacios' });
-
+  const { hash, salt } = hashPassword(password);
   try {
     await pool.query(
-      'INSERT INTO users (username, password, display_name, is_admin) VALUES ($1, $2, $3, FALSE)',
-      [username, password, displayName]
+      'INSERT INTO users (username, password_hash, password_salt, display_name, is_admin) VALUES ($1,$2,$3,$4,FALSE)',
+      [username, hash, salt, displayName]
     );
     res.json({ ok: true });
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Usuario ya existe' });
-    console.error(err.message);
     res.status(500).json({ error: 'Error interno' });
   }
 });
 
-app.delete('/api/users/:username', requireAdmin, async (req, res) => {
-  const { username } = req.params;
-  if (username === 'admin') return res.status(400).json({ error: 'No podés eliminar al admin' });
-
+// ── PATCH /api/users/:id/password  (admin) ────────────────────────────────────
+app.patch('/api/users/:id/password', requireAdmin, async (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Falta la nueva clave' });
+  const { hash, salt } = hashPassword(password);
   try {
-    await pool.query('DELETE FROM users WHERE username = $1 AND is_admin = FALSE', [username]);
+    const result = await pool.query(
+      'UPDATE users SET password_hash=$1, password_salt=$2 WHERE username=$3 AND is_admin=FALSE',
+      [hash, salt, req.params.id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json({ ok: true });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: 'Error interno' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
-// ── Fallback: SPA ─────────────────────────────────────────────────────────────
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+// ── DELETE /api/users/:id  (admin) ────────────────────────────────────────────
+app.delete('/api/users/:id', requireAdmin, async (req, res) => {
+  if (req.params.id === 'admin') return res.status(403).json({ error: 'No se puede eliminar al admin' });
+  try {
+    await pool.query('DELETE FROM users WHERE username=$1 AND is_admin=FALSE', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
-// ── Arrancar ──────────────────────────────────────────────────────────────────
+// ── Fallback SPA ──────────────────────────────────────────────────────────────
+app.get('*', (_req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
+
 app.listen(PORT, () => {
   console.log(`\n⚽  FIFA World Cup 2026 – Prode`);
-  console.log(`🌐  Servidor corriendo en puerto ${PORT}`);
-  console.log(`🗄️   PostgreSQL conectado`);
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`🔗  http://localhost:${PORT}\n`);
-  }
+  console.log(`🌐  Puerto ${PORT} | 🗄️  PostgreSQL\n`);
 });
