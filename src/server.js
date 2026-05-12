@@ -12,6 +12,7 @@ const PORT = parseInt(process.env.PORT || '3000');
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json());
+app.set('trust proxy', 1);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.use(session({
