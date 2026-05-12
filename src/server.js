@@ -3,7 +3,6 @@ require('dotenv').config();
 
 const express      = require('express');
 const session      = require('express-session');
-const pgSession    = require('connect-pg-simple')(session);
 const path         = require('path');
 const pool         = require('./db');
 const { MATCHES, calcPoints } = require('./matches');
@@ -16,19 +15,14 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.use(session({
-  store: new pgSession({
-    pool,
-    tableName: 'session',
-    createTableIfMissing: false, // la crea db-init.js
-  }),
   secret:            process.env.SESSION_SECRET || 'dev-secret-change-me',
   resave:            false,
   saveUninitialized: false,
   cookie: {
-    secure:   process.env.NODE_ENV === 'production', // HTTPS en prod, HTTP en dev
+    secure:   process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge:   7 * 24 * 60 * 60 * 1000, // 7 días
-    sameSite: 'lax',
+    maxAge:   7 * 24 * 60 * 60 * 1000,
+    sameSite: 'none',
   },
 }));
 
