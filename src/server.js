@@ -147,6 +147,33 @@ app.get('/api/predictions', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Error interno' }); }
 });
 
+// ── GET /api/predictions/public/:userId  (ver predicciones de otro usuario) ───
+app.get('/api/predictions/public/:userId', requireAuth, async (req, res) => {
+  const targetUser = req.params.userId;
+  try {
+    // Verificar que el usuario existe y tiene sharePredictions activo
+    const { rows: userRows } = await pool.query(
+      'SELECT share_predictions, is_admin FROM users WHERE username = $1', [targetUser]
+    );
+    if (!userRows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (userRows[0].is_admin) return res.status(403).json({ error: 'No disponible' });
+
+    // El propio usuario siempre puede ver las suyas; otros solo si share está activo
+    const { rows: reqRows } = await pool.query('SELECT is_admin FROM users WHERE username = $1', [req.username]);
+    const isAdmin = reqRows[0]?.is_admin;
+    if (!isAdmin && targetUser !== req.username && !userRows[0].share_predictions) {
+      return res.status(403).json({ error: 'Este usuario mantiene sus predicciones en privado 🙈' });
+    }
+
+    const { rows } = await pool.query(
+      'SELECT match_id, g1, g2 FROM predictions WHERE username = $1', [targetUser]
+    );
+    const preds = {};
+    for (const r of rows) preds[r.match_id] = { g1: r.g1, g2: r.g2 };
+    res.json(preds);
+  } catch (err) { res.status(500).json({ error: 'Error interno' }); }
+});
+
 // ── POST /api/predictions  (jugadores only) ───────────────────────────────────
 app.post('/api/predictions', requireAuth, async (req, res) => {
   try {
